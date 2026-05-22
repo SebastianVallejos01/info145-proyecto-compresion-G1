@@ -96,6 +96,11 @@ public:
     size_t getEspacioUtilizado() const {
         return (GC.capacity() * sizeof(uint32_t)) + (Sample.capacity() * sizeof(uint32_t)) + sizeof(b);
     }
+    
+    // Funcion publica para obtener una referencia a los gaps calculados en el Caso 2
+    const std::vector<uint32_t>& getGC() const {
+        return GC;
+    }
 };
 
 #endif // GAP_CODING_HPP

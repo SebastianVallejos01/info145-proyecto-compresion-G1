@@ -7,7 +7,7 @@
 // Aquí vayan incluyendo sus archivos, dejé esos nombres como ejemplo
 // #include "explicita.hpp"   // Caso 1
 #include "gap_coding.hpp"  // Caso 2
-// #include "compresion.hpp"  // Caso 3
+#include "compresion.hpp"  // Caso 3
 
 using namespace std;
 
@@ -78,7 +78,22 @@ void runBenchmark() {
 
         cout << "[Caso 2] Tiempo de construcción: " << build_time.count() << " ms" << endl;
         cout << "[Caso 2] Espacio utilizado: " << caso2.getEspacioUtilizado() << " bytes" << endl;
+        
+     // ==========================================
+     // INTEGRACIÓN DEL CASO 3: PForDelta
+     // ==========================================
+     cout << "Comprimiendo gaps con PForDelta (Caso 3)..." << endl;
 
+     // Medimos el tiempo de construcción del Caso 3 usando los gaps del Caso 2
+     auto start_build_c3 = chrono::high_resolution_clock::now();
+     PForDeltaCoder caso3(caso2.getGC());
+     auto end_build_c3 = chrono::high_resolution_clock::now();
+     chrono::duration<double, milli> build_time_c3 = end_build_c3 - start_build_c3;
+
+     cout << "[Caso 3] Tiempo de construcción: " << build_time_c3.count() << " ms" << endl;
+     cout << "[Caso 3] Espacio utilizado: " << caso3.getEspacioUtilizado() << " bytes" << endl;
+     // ==========================================
+     
         // Volver inaccesible el arreglo original (Regla del Caso 2)
         arreglo_original.clear();
         arreglo_original.shrink_to_fit();
