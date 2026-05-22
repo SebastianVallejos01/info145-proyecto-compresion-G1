@@ -97,9 +97,19 @@ public:
         return (GC.capacity() * sizeof(uint32_t)) + (Sample.capacity() * sizeof(uint32_t)) + sizeof(b);
     }
     
-    // Funcion publica para obtener una referencia a los gaps calculados en el Caso 2
+    // Funcion para obtener una referencia a los gaps calculados en el Caso 2
     const std::vector<uint32_t>& getGC() const {
         return GC;
+    }
+    
+    // Funcion para obtener una referencia al arreglo de muestras
+    const std::vector<uint32_t>& getSample() const {
+        return Sample;
+    }
+
+    // Función para obtener el tamaño del salto
+    size_t getB() const {
+        return b;
     }
 };
 

@@ -111,6 +111,26 @@ void runBenchmark() {
 
         cout << "[Caso 2] Tiempo total por " << numero_busquedas << " búsquedas: " << search_time.count() << " ms" << endl;
         cout << "[Caso 2] Elementos encontrados con éxito: " << encontrados << "/" << numero_busquedas << endl;
+        
+        // ====================================================================
+        // Medir tiempo de multiples busquedas para el Caso 3 (PForDelta)
+        // ====================================================================
+        auto start_search_c3 = chrono::high_resolution_clock::now();
+        int encontrados_c3 = 0;
+        
+        for (uint32_t valor : valores_a_buscar) {
+            // Buscamos utilizando la estructura comprimida de PForDelta
+            if (caso3.buscar(valor, caso2.getSample(), b_parametrico) != -1) {
+                encontrados_c3++;
+            }
+        }
+        
+        auto end_search_c3 = chrono::high_resolution_clock::now();
+        chrono::duration<double, milli> search_time_c3 = end_search_c3 - start_search_c3;
+
+        cout << "[Caso 3] Tiempo total por " << numero_busquedas << " búsquedas: " << search_time_c3.count() << " ms" << endl;
+        cout << "[Caso 3] Elementos encontrados con éxito: " << encontrados_c3 << "/" << numero_busquedas << endl;
+        // ====================================================================
     }
 }
 

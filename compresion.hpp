@@ -95,6 +95,57 @@ public:
         memoria_total += sizeof(total_gaps) + (bloques.capacity() * sizeof(BloquePForDelta));
         return memoria_total;
     }
+    
+    // Funcion de busqueda para el Caso 3
+    // Recibe el valor a buscar, el arreglo Sample del Caso 2 y el salto parametrizado 'b'
+    int buscar(uint32_t valor, const std::vector<uint32_t>& sample, size_t b) const {
+        // Si no hay muestras o el valor es menor que la primera muestra, el numero no existe
+        if (sample.empty() || valor < sample[0]) {
+            return -1;
+        }
+
+        // A. Realizamos la busqueda binaria sobre el Sample para acotar el rango [L, R]
+        int low = 0;
+        int high = sample.size() - 1;
+        int idx_sample = 0;
+
+        while (low <= high) {
+            int mid = low + (high - low) / 2;
+            
+            if (sample[mid] == valor) {
+                return mid * b; // Encontrado directamente en la muestra
+            } else if (sample[mid] < valor) {
+                idx_sample = mid; // Guardamos esta muestra como el limite inferior tentativo
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+
+        // B. Calculamos los limites de búsqueda exacta dentro de PForDelta
+        size_t L = idx_sample * b;
+        size_t R = L + b;
+        if (R > total_gaps) {
+            R = total_gaps; // Evitamos salirnos del tamaño del arreglo
+        }
+
+        // Partimos con el valor absoluto acumulado de la muestra base
+        uint32_t valor_actual = sample[idx_sample];
+
+        // C. Navegacion secuencial descomprimiendo los gaps en formato PForDelta
+        for (size_t i = L + 1; i < R; ++i) {
+            // En lugar de usar un arreglo directo, llamamos a tu función que recupera el gap original
+            valor_actual += decompress_gap(i); 
+            
+            if (valor_actual == valor) {
+                return i; // Encontrado con éxito
+            } else if (valor_actual > valor) {
+                return -1; // Si nos pasamos del valor buscado, significa que no existe en el arreglo
+            }
+        }
+
+        return -1; // No se encontro en el rango
+    }
 
 private:
     // Proceso interno para analizar y codificar un bloque individual de 128 elementos
