@@ -7,7 +7,8 @@
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
-//cabeceras
+
+// Cabeceras
 #include "generador.hpp"
 #include "caso1.hpp"
 #include "caso2.hpp"
@@ -16,26 +17,26 @@
 using namespace std;
 using namespace std::chrono;
 
-//función para exportar métricas a un csv
+// Función para exportar métricas a un CSV
 void exportarMetrica(const string& rutaDestino, size_t n, const string& distribucion, const string& caso, double tiempoConstMS, double tiempoBusqMicro, size_t espacioBytes){
     ofstream archivo;
-    //Se abre en modo append (ios_base::app) para no borrar los datos anteriores
+    // Se abre en modo append (ios_base::app) para no borrar los datos anteriores
     archivo.open(rutaDestino, ios_base::app);
     if(archivo.is_open()){
-        archivo <<n<<","<<distribucion<<","<<caso<<","
-                <<tiempoConstMS<<","<<tiempoBusqMicro<<","<<espacioBytes<<"\n";
+        archivo << n << "," << distribucion << "," << caso << ","
+                << tiempoConstMS << "," << tiempoBusqMicro << "," << espacioBytes << "\n";
         archivo.close();
     } else {
-        cerr <<"error"<<endl;
+        cerr << "Error al abrir archivo de metricas" << endl;
     }
 }
 
-//función para leer el archivo csv usando atoll
+// Función para leer el archivo CSV usando atoll
 vector<uint64_t> leerArchivoCSV(const string& ruta){
     vector<uint64_t> datos;
     ifstream archivo(ruta);
     if(!archivo.is_open()){
-        cerr<<"error de ejecución"<<ruta<<endl;
+        cerr << "Error de ejecucion: no se pudo abrir " << ruta << endl;
         return datos;
     }
 
@@ -45,8 +46,8 @@ vector<uint64_t> leerArchivoCSV(const string& ruta){
         string celda;
         while (getline(ss,celda,',')){
             if(!celda.empty()){
-                //conversión estricta con atoll
-                long long valorEntero=atoll(celda.c_str());
+                // Conversión estricta con atoll
+                long long valorEntero = atoll(celda.c_str());
                 datos.push_back(static_cast<uint64_t>(valorEntero));
             }
         }
@@ -56,44 +57,45 @@ vector<uint64_t> leerArchivoCSV(const string& ruta){
 }
 
 void ejecutarBenchmark(){
-    cout <<"modo benchmark automático"<<endl;
-    string archivoMetricas="metricas.csv";
-    //inicializar el archivo CSV con los encabezados
+    cout << "=== MODO BENCHMARK AUTOMATICO ===" << endl;
+    string archivoMetricas = "metricas.csv";
+    
+    // Inicializar el archivo CSV con los encabezados
     ofstream archivoEncabezado(archivoMetricas);
     if(archivoEncabezado.is_open()){
-        archivoEncabezado<<"Tamano,Distribucion,Caso,tiempoConstruccion_ms,TiempoBusquedaPromedio_us,Espacio_bytes\n";
+        archivoEncabezado << "Tamano,Distribucion,Caso,TiempoConstruccion_ms,TiempoBusquedaPromedio_us,Espacio_bytes\n";
         archivoEncabezado.close();
     }
 
-    //tamaños de escala incremental en potencias de 10
-    vector<size_t> tamanos={1000000,10000000};
-    int numBusquedas=1000;
+    // Tamaños de escala incremental en potencias de 10
+    vector<size_t> tamanos = {1000000, 10000000};
+    int numBusquedas = 1000;
+    int salto_b = 64; // Salto parametrizado para Caso 2 y 3
 
-    for(size_t n:tamanos){
-        cout<<"\nProcesando escala n="<<n<<"..."<<endl;
+    for(size_t n : tamanos){
+        cout << "\nProcesando escala n=" << n << "..." << endl;
 
-        //distribución lineal
-        vector<uint64_t> datosLineales = Generador::generarLineal(n,10);
+        // ==========================================
+        //         DISTRIBUCION LINEAL
+        // ==========================================
+        vector<uint64_t> datosLineales = Generador::generarLineal(n, 10);
 
-        //Caso 1: Representación Explícita
-        auto initC1=high_resolution_clock::now();
+        // --- Caso 1: Representacion Explicita ---
+        auto initC1 = high_resolution_clock::now();
         Caso1 c1_lineal(datosLineales);
         auto finC1 = high_resolution_clock::now();
         double t_const_c1 = duration_cast<milliseconds>(finC1 - initC1).count();
 
-        // Medición de búsquedas para Caso 1
         auto initBusqC1 = high_resolution_clock::now();
         for (int i = 0; i < numBusquedas; ++i) {
             c1_lineal.buscar(rand() % (n * 2));
         }
-
         auto finBusqC1 = high_resolution_clock::now();
         double t_busq_c1 = duration_cast<microseconds>(finBusqC1 - initBusqC1).count() / (double)numBusquedas;
 
         exportarMetrica(archivoMetricas, n, "Lineal", "Caso 1", t_const_c1, t_busq_c1, c1_lineal.obtenerEspacio());
 
-        // Caso 2: Gap-Coding (Salto b estático de ejemplo)
-        int salto_b = 64; 
+        // --- Caso 2: Gap-Coding ---
         auto initC2 = high_resolution_clock::now();
         Caso2 c2_lineal(datosLineales, salto_b);
         auto finC2 = high_resolution_clock::now();
@@ -107,10 +109,29 @@ void ejecutarBenchmark(){
         double t_busq_c2 = duration_cast<microseconds>(finBusqC2 - initBusqC2).count() / (double)numBusquedas;
 
         exportarMetrica(archivoMetricas, n, "Lineal", "Caso 2", t_const_c2, t_busq_c2, c2_lineal.obtenerEspacio());
+
+        // --- Caso 3: PForDelta ---
+        auto initC3 = high_resolution_clock::now();
+        PForDelta c3_lineal(datosLineales, salto_b);
+        auto finC3 = high_resolution_clock::now();
+        double t_const_c3 = duration_cast<milliseconds>(finC3 - initC3).count();
+
+        auto initBusqC3 = high_resolution_clock::now();
+        for (int i = 0; i < numBusquedas; ++i) {
+            c3_lineal.buscar(rand() % (n * 2));
+        }
+        auto finBusqC3 = high_resolution_clock::now();
+        double t_busq_c3 = duration_cast<microseconds>(finBusqC3 - initBusqC3).count() / (double)numBusquedas;
+
+        exportarMetrica(archivoMetricas, n, "Lineal", "Caso 3", t_const_c3, t_busq_c3, c3_lineal.obtenerEspacio());
+
         
-        // --- DISTRIBUCIÓN NORMAL ---
+        // ==========================================
+        //         DISTRIBUCION NORMAL
+        // ==========================================
         vector<uint64_t> datosNormales = Generador::generarNormal(n, n / 2.0, n / 10.0);
-        // Caso 1 Normal
+        
+        // --- Caso 1 Normal ---
         initC1 = high_resolution_clock::now();
         Caso1 c1_normal(datosNormales);
         finC1 = high_resolution_clock::now();
@@ -124,7 +145,8 @@ void ejecutarBenchmark(){
         t_busq_c1 = duration_cast<microseconds>(finBusqC1 - initBusqC1).count() / (double)numBusquedas;
 
         exportarMetrica(archivoMetricas, n, "Normal", "Caso 1", t_const_c1, t_busq_c1, c1_normal.obtenerEspacio());
-        // Caso 2 Normal
+        
+        // --- Caso 2 Normal ---
         initC2 = high_resolution_clock::now();
         Caso2 c2_normal(datosNormales, salto_b);
         finC2 = high_resolution_clock::now();
@@ -138,12 +160,27 @@ void ejecutarBenchmark(){
         t_busq_c2 = duration_cast<microseconds>(finBusqC2 - initBusqC2).count() / (double)numBusquedas;
 
         exportarMetrica(archivoMetricas, n, "Normal", "Caso 2", t_const_c2, t_busq_c2, c2_normal.obtenerEspacio());
+
+        // --- Caso 3 Normal ---
+        initC3 = high_resolution_clock::now();
+        PForDelta c3_normal(datosNormales, salto_b);
+        finC3 = high_resolution_clock::now();
+        t_const_c3 = duration_cast<milliseconds>(finC3 - initC3).count();
+
+        initBusqC3 = high_resolution_clock::now();
+        for (int i = 0; i < numBusquedas; ++i) {
+            c3_normal.buscar(rand() % (n * 2));
+        }
+        finBusqC3 = high_resolution_clock::now();
+        t_busq_c3 = duration_cast<microseconds>(finBusqC3 - initBusqC3).count() / (double)numBusquedas;
+
+        exportarMetrica(archivoMetricas, n, "Normal", "Caso 3", t_const_c3, t_busq_c3, c3_normal.obtenerEspacio());
     }
     cout << "\nBenchmark completado. Datos guardados en '" << archivoMetricas << "'." << endl;
 }
 
 void ejecutarModoArchivo(const string& rutaArchivo){
-    cout << "MODO ARCHIVO INTERACTIVO" << endl;
+    cout << "=== MODO ARCHIVO INTERACTIVO ===" << endl;
     cout << "Cargando datos desde: " << rutaArchivo << "..." << endl;
 
     vector<uint64_t> datos = leerArchivoCSV(rutaArchivo);
@@ -152,9 +189,11 @@ void ejecutarModoArchivo(const string& rutaArchivo){
         return;
     }
     cout << "Se cargaron " << datos.size() << " elementos correctamente." << endl;
+    
     // Construcción de estructuras base para la sesión interactiva
     Caso1 estructuraC1(datos);
     Caso2 estructuraC2(datos, 64);
+    PForDelta estructuraC3(datos, 64); // Integrado el Caso 3
 
     long long entradaUsuario;
     int estructuraElegida;
@@ -163,13 +202,14 @@ void ejecutarModoArchivo(const string& rutaArchivo){
         cout << "\nMENU DE BUSQUEDA INTERACTIVA" << endl;
         cout << "1. Buscar en Caso 1 (Representacion Explicita)" << endl;
         cout << "2. Buscar en Caso 2 (Gap-Coding)" << endl;
-        cout << "3. Salir" << endl;
-        cout << "Seleccione una estructura (1-3): ";
+        cout << "3. Buscar en Caso 3 (PForDelta)" << endl;
+        cout << "4. Salir" << endl;
+        cout << "Seleccione una estructura (1-4): ";
         cin >> estructuraElegida;
 
-        if (estructuraElegida == 3) break;
-        if (estructuraElegida != 1 && estructuraElegida != 2) {
-            cout << "Opcion no válida." << endl;
+        if (estructuraElegida == 4) break;
+        if (estructuraElegida < 1 || estructuraElegida > 3) {
+            cout << "Opcion no valida." << endl;
             continue;
         }
 
@@ -180,26 +220,29 @@ void ejecutarModoArchivo(const string& rutaArchivo){
         int posicion = -1;
         double tiempoMicro = 0.0;
 
+        auto inicio = high_resolution_clock::now();
+        
+        // Ruteo de la búsqueda según la opción
         if (estructuraElegida == 1) {
-            auto inicio = high_resolution_clock::now();
             posicion = estructuraC1.buscar(valorBuscado);
-            auto fin = high_resolution_clock::now();
-            tiempoMicro = duration_cast<microseconds>(fin - inicio).count();
         } else if (estructuraElegida == 2) {
-            auto inicio = high_resolution_clock::now();
             posicion = estructuraC2.buscar(valorBuscado);
-            auto fin = high_resolution_clock::now();
-            tiempoMicro = duration_cast<microseconds>(fin - inicio).count();
+        } else if (estructuraElegida == 3) {
+            posicion = estructuraC3.buscar(valorBuscado);
         }
 
+        auto fin = high_resolution_clock::now();
+        tiempoMicro = duration_cast<microseconds>(fin - inicio).count();
+
         if (posicion != -1) {
-            cout << "-> Valor localizado en la posicion: " << posicion << endl;
+            cout << "-> Valor localizado en la posicion (indice logico): " << posicion << endl;
         } else {
             cout << "-> Valor no encontrado en la estructura." << endl;
         }
-        cout << "-> Tiempo de busqueda: " << tiempoMicro << " microsegundos." << endl;
+        cout << "-> Tiempo de busqueda: " << tiempoMicro << " nanosegundos." << endl;
     }
 }
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         cerr << "Error: Faltan argumentos de ejecucion." << endl;
